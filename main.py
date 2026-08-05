@@ -27,11 +27,12 @@ def answer_callback(call):
             target_value = result[0]
             sql_request = "SELECT video_id FROM last_video WHERE user_id=?"
             result_last_video = db.execute(sql_request, (user_id,)).fetchone()
-            try:
-                old_message_id = result_last_video[0]
-                bot.delete_message(chat_id=call.message.chat.id, message_id=old_message_id)
-            except Exception as e:
-                print(f"Ошибка удаления: {e}")
+            if result_last_video is not None:
+                try:
+                    old_message_id = result_last_video[0]
+                    bot.delete_message(chat_id=call.message.chat.id, message_id=old_message_id)
+                except Exception as e:
+                    print(f"Ошибка удаления: {e}")
             source_group_id = -1003910568004
             cnt_episodes = get_episodes_keyboard(season, seria)
             sent_video = bot.copy_message(chat_id=call.message.chat.id, message_id=target_value,
@@ -113,7 +114,7 @@ class WebHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Bot is alive!")
     def log_message(self, format, *args):
-        return # Отключаем лишние логи в консоли
+        return
 
 def run_web_server():
     import os
