@@ -1,6 +1,8 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import sqlite3
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 token = ("8635509401:AAFXdC3LysybFPAADc6cwqG3IWxcqwawBTY")
@@ -103,5 +105,23 @@ def start_message(message):
             cnt.row(*row_buttons)
             row_buttons = []
     bot.send_message(message.chat.id, "Выберите сезон сериала Друзья", reply_markup=cnt)
+
+class WebHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+    def log_message(self, format, *args):
+        return # Отключаем лишние логи в консоли
+
+def run_web_server():
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), WebHandler)
+    server.serve_forever()
+
+
+threading.Thread(target=run_web_server, daemon=True).start()
 
 bot.infinity_polling()
