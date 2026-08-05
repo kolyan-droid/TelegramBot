@@ -3,9 +3,9 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import sqlite3
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import os
 
-
-token = ("8635509401:AAFXdC3LysybFPAADc6cwqG3IWxcqwawBTY")
+token = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(token, threaded=True, num_threads=10)
 
 @bot.callback_query_handler(func=lambda call: True)
