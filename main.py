@@ -118,21 +118,6 @@ def get_episodes_keyboard(num_season, seria=None):
     cnt_episodes.row(back_button)
     return cnt_episodes
 
-@bot.message_handler(content_types=['text'])
-def start_message(message):
-    log_user_action(message.chat.id, f"send_start_message")
-    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-    print(f"НАСТОЯЩИЙ ID ГРУППЫ: {message.chat.id}")
-    row_buttons = []
-    cnt = InlineKeyboardMarkup(row_width=5)
-    for i in range(1, 11):
-        btn = InlineKeyboardButton(f"{i}", callback_data=f"season:{i}")
-        row_buttons.append(btn)
-        if len(row_buttons) == 5:
-            cnt.row(*row_buttons)
-            row_buttons = []
-    bot.send_message(message.chat.id, "Выберите сезон сериала Друзья", reply_markup=cnt)
-
 @bot.message_handler(commands=['admin_stats'])
 def admin_stats(message):
     user_id = message.chat.id
@@ -161,6 +146,22 @@ def admin_stats(message):
             pool.putconn(connection)
     else:
         return
+
+@bot.message_handler(content_types=['text'])
+def start_message(message):
+    log_user_action(message.chat.id, f"send_start_message")
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+    print(f"НАСТОЯЩИЙ ID ГРУППЫ: {message.chat.id}")
+    row_buttons = []
+    cnt = InlineKeyboardMarkup(row_width=5)
+    for i in range(1, 11):
+        btn = InlineKeyboardButton(f"{i}", callback_data=f"season:{i}")
+        row_buttons.append(btn)
+        if len(row_buttons) == 5:
+            cnt.row(*row_buttons)
+            row_buttons = []
+    bot.send_message(message.chat.id, "Выберите сезон сериала Друзья", reply_markup=cnt)
+
 
 class WebHandler(BaseHTTPRequestHandler):
     def do_GET(self):
