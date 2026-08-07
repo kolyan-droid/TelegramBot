@@ -138,19 +138,4 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
-connection = pool.getconn()
-with connection.cursor() as cursor:
-    sql_request = """CREATE TABLE IF NOT EXISTS episodes (
-    episode VARCHAR(20) PRIMARY KEY,
-    id_video BIGINT NOT NULL
-);"""
-    cursor.execute(sql_request)
-    sql_request_1 = """CREATE TABLE IF NOT EXISTS last_video (
-    user_id BIGINT PRIMARY KEY,
-    video_id BIGINT NOT NULL
-);"""
-    cursor.execute(sql_request_1)
-    connection.commit()
-pool.putconn(connection)
-
 bot.infinity_polling()
