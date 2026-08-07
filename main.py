@@ -1,12 +1,16 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import sqlite3
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
+from psycopg2.pool import ThreadedConnectionPool
 
+# postgresql://serialfriends_db_user:vn2xgSOqbBofeqtIWoHvVvEcSfJEEDl5@dpg-d9qahsu1egvs73dk5m30-a/serialfriends_db
+# postgresql://serialfriends_db_user:vn2xgSOqbBofeqtIWoHvVvEcSfJEEDl5@dpg-d9qahsu1egvs73dk5m30-a.frankfurt-postgres.render.com/serialfriends_db
 token = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(token, threaded=True, num_threads=10)
+db_url = os.environ.get("DATABASE_URL")
+pool = ThreadedConnectionPool(1, 10, db_url)
 
 @bot.callback_query_handler(func=lambda call: True)
 def answer_callback(call):
@@ -16,33 +20,42 @@ def answer_callback(call):
         cnt_episodes = get_episodes_keyboard(num_season)
         bot.edit_message_text(f"Вы открыли {num_season} сезон. Выберите серию", chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=cnt_episodes)
     elif call.data.startswith("play:"):
-        user_id = str(call.message.chat.id)
+        user_id = call.message.chat.id
         season, seria = call.data.split(":")[1:]
         key_fo_db = season + ":" + seria
-        with sqlite3.connect("db.db", check_same_thread=False) as db:
-            pragms_setting = "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;"
-            db.executescript(pragms_setting)
-            sql_request = "SELECT id_video FROM episodes WHERE episode=?"
-            result = db.execute(sql_request, (key_fo_db,)).fetchone()
-            target_value = result[0]
-            sql_request = "SELECT video_id FROM last_video WHERE user_id=?"
-            result_last_video = db.execute(sql_request, (user_id,)).fetchone()
-            if result_last_video is not None:
-                try:
-                    old_message_id = result_last_video[0]
-                    bot.delete_message(chat_id=call.message.chat.id, message_id=old_message_id)
-                except Exception as e:
-                    print(f"Ошибка удаления: {e}")
-            source_group_id = -1003910568004
-            cnt_episodes = get_episodes_keyboard(season, seria)
-            sent_video = bot.copy_message(chat_id=call.message.chat.id, message_id=target_value,
-                                          from_chat_id=source_group_id, caption="")
-            video_id = sent_video.message_id
-            sql_request = "INSERT OR REPLACE INTO last_video (user_id, video_id) VALUES (?, ?)"
-            db.execute(sql_request, (user_id, video_id,))
-            db.commit()
-            bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            bot.send_message(call.message.chat.id, f"Вы смотрите {season} сезон {seria} серию. Выберите серию", reply_markup=cnt_episodes)
+        connection = pool.getconn()
+        try:
+            with connection.cursor() as cursor:
+                sql_request = "SELECT id_video FROM episodes WHERE episode=%s"
+                cursor.execute(sql_request, (key_fo_db,))
+                result = cursor.fetchone()
+                target_value = result[0]
+                sql_request = "SELECT video_id FROM last_video WHERE user_id=%s"
+                cursor.execute(sql_request, (user_id,))
+                result_last_video = cursor.fetchone()
+                if result_last_video is not None:
+                    try:
+                        old_message_id = result_last_video[0]
+                        bot.delete_message(chat_id=call.message.chat.id, message_id=old_message_id)
+                    except Exception as e:
+                        print(f"Ошибка удаления: {e}")
+                source_group_id = -1003910568004
+                cnt_episodes = get_episodes_keyboard(season, seria)
+                sent_video = bot.copy_message(chat_id=call.message.chat.id, message_id=target_value,
+                                              from_chat_id=source_group_id, caption="")
+                video_id = sent_video.message_id
+                sql_request = ("INSERT INTO last_video (user_id, video_id)"
+                               " VALUES (%s, %s)"
+                               "ON CONFLICT (user_id)"
+                               "DO UPDATE SET video_id = EXCLUDED.video_id")
+                cursor.execute(sql_request, (user_id, video_id,))
+                connection.commit()
+                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+                bot.send_message(call.message.chat.id, f"Вы смотрите {season} сезон {seria} серию. Выберите серию",
+                                 reply_markup=cnt_episodes)
+
+        finally:
+            pool.putconn(connection)
     elif call.data == "to_main":
         row_buttons = []
         cnt = InlineKeyboardMarkup(row_width=5)
@@ -124,5 +137,20 @@ def run_web_server():
 
 
 threading.Thread(target=run_web_server, daemon=True).start()
+
+connection = pool.getconn()
+with connection.cursor() as cursor:
+    sql_request = """CREATE TABLE IF NOT EXISTS episodes (
+    episode VARCHAR(20) PRIMARY KEY,
+    id_video BIGINT NOT NULL
+);"""
+    cursor.execute(sql_request)
+    sql_request_1 = """CREATE TABLE IF NOT EXISTS last_video (
+    user_id BIGINT PRIMARY KEY,
+    video_id BIGINT NOT NULL
+);"""
+    cursor.execute(sql_request_1)
+    connection.commit()
+pool.putconn(connection)
 
 bot.infinity_polling()
