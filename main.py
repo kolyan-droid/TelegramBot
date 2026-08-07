@@ -14,7 +14,7 @@ def log_user_action(user_id, action_text):
     connection = pool.getconn()
     try:
         with connection.cursor() as cursor:
-            sql_request = "INSERT INTO activity_logs (user_id, action) VALUES (%s, %s)"
+            sql_request = "INSERT INTO activity_log (user_id, action) VALUES (%s, %s)"
             cursor.execute(sql_request, (user_id, action_text))
             connection.commit()
     finally:
@@ -58,7 +58,7 @@ def answer_callback(call):
                                "ON CONFLICT (user_id)"
                                "DO UPDATE SET video_id = EXCLUDED.video_id")
                 cursor.execute(sql_request, (user_id, video_id,))
-                cursor.execute("INSERT INTO activity_logs (user_id, action) VALUES (%s, %s)", (user_id, f"play_episode:{key_fo_db}"))
+                cursor.execute("INSERT INTO activity_log (user_id, action) VALUES (%s, %s)", (user_id, f"play_episode:{key_fo_db}"))
                 connection.commit()
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 bot.send_message(call.message.chat.id, f"Вы смотрите {season} сезон {seria} серию. Выберите серию",
@@ -141,13 +141,13 @@ def admin_stats(message):
         try:
             total_users = 0
             with connection.cursor() as cursor:
-                cursor.execute("SELECT COUNT(DISTINCT user_id) FROM activity_logs")
+                cursor.execute("SELECT COUNT(DISTINCT user_id) FROM activity_log")
                 result = cursor.fetchone()
                 if result is not None:
                     total_users = result[0]
                 else:
                     pass
-                cursor.execute("""SELECT action, COUNT(*) FROM activity_logs
+                cursor.execute("""SELECT action, COUNT(*) FROM activity_log
                                WHERE action LIKE 'play_episode:%'
                                GROUP BY action
                                ORDER BY COUNT(*)
