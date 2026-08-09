@@ -31,11 +31,12 @@ def answer_callback(call):
     elif call.data.startswith("play:"):
         user_id = call.message.chat.id
         season, seria = call.data.split(":")[1:]
+        key_fo_db = season + ":" + seria
         connection = pool.getconn()
         try:
             with connection.cursor() as cursor:
                 sql_request = "SELECT id_video FROM episodes WHERE episode=%s"
-                cursor.execute(sql_request, (f"{season}:{seria}",))
+                cursor.execute(sql_request, (key_fo_db,))
                 result = cursor.fetchone()
                 target_value = result[0]
                 sql_request = "SELECT video_id FROM last_video WHERE user_id=%s"
