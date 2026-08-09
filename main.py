@@ -35,10 +35,11 @@ def answer_callback(call):
         connection = pool.getconn()
         try:
             with connection.cursor() as cursor:
-                sql_request = "SELECT id_video FROM episodes WHERE episode=%s"
+                sql_request = "SELECT id_video, caption FROM episodes WHERE episode=%s"
                 cursor.execute(sql_request, (key_fo_db,))
                 result = cursor.fetchone()
                 target_value = result[0]
+                caption = result[1]
                 sql_request = "SELECT video_id FROM last_video WHERE user_id=%s"
                 cursor.execute(sql_request, (user_id,))
                 result_last_video = cursor.fetchone()
@@ -51,7 +52,7 @@ def answer_callback(call):
                 source_group_id = -1003910568004
                 cnt_episodes = get_episodes_keyboard(season, seria)
                 sent_video = bot.copy_message(chat_id=call.message.chat.id, message_id=target_value,
-                                              from_chat_id=source_group_id, caption="")
+                                              from_chat_id=source_group_id, caption=caption)
                 video_id = sent_video.message_id
                 sql_request = ("INSERT INTO last_video (user_id, video_id)"
                                " VALUES (%s, %s)"
