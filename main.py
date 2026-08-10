@@ -62,7 +62,7 @@ def answer_callback(call):
                 cursor.execute("INSERT INTO activity_log (user_id, action) VALUES (%s, %s)", (user_id, f"play_episode:{key_fo_db}"))
                 connection.commit()
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-                bot.send_message(call.message.chat.id, f"Вы смотрите {season} сезон {seria} серию. Выберите серию",
+                bot.send_message(call.message.chat.id, f"Вы смотрите {season} сезон {seria} серию",
                                  reply_markup=cnt_episodes)
 
         finally:
@@ -104,8 +104,8 @@ def get_episodes_keyboard(num_season, seria=None):
     if seria is not None:
         if max_episodes == int(seria):
             if num_season != "10":
-                num_season = f"{int(num_season) + 1}"
-                next_button = InlineKeyboardButton("Следующая серия", callback_data=f"play:{num_season}:1")
+                num_season_new = f"{int(num_season) + 1}"
+                next_button = InlineKeyboardButton("Следующая серия", callback_data=f"play:{num_season_new}:1")
                 cnt_episodes.row(next_button)
             else:
                 pass
